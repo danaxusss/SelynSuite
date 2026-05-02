@@ -1,0 +1,52 @@
+// Conventional Commits with scopes that match our bounded contexts.
+// See: https://www.conventionalcommits.org/
+export default {
+  extends: ['@commitlint/config-conventional'],
+  rules: {
+    'type-enum': [
+      2,
+      'always',
+      [
+        'feat',
+        'fix',
+        'chore',
+        'refactor',
+        'docs',
+        'test',
+        'build',
+        'ci',
+        'perf',
+        'style',
+        'revert',
+      ],
+    ],
+    'scope-enum': [
+      2,
+      'always',
+      [
+        'identity',
+        'paie',
+        'rh',
+        'compta',
+        'facturation',
+        'commerce',
+        'tresorerie',
+        'crm',
+        'projets',
+        'shared',
+        'web',
+        'api',
+        'engine',
+        'types',
+        'ui',
+        'infra',
+        'docs',
+        'ci',
+        'deps',
+        'release',
+      ],
+    ],
+    'subject-case': [2, 'never', ['upper-case', 'pascal-case', 'start-case']],
+    'header-max-length': [2, 'always', 100],
+  },
+};

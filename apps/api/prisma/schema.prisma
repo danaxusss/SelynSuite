@@ -1,0 +1,123 @@
+// Selyn Suite — Prisma schema
+// Phase 0: Identity bounded context only (Tenant, User, Membership, AuditLog).
+// Subsequent phases add Paie, RH, Compta, etc. — each in its own namespace
+// (model name prefix or schema map) per Cardinal Rule R5.
+//
+// Cardinal Rules enforced here:
+//   R1  every business table has tenantId + RLS policies (added in Phase 1).
+//   R6  AuditLog is append-only (no updatedAt, no @updatedAt).
+//   R7  legal-retention entities are soft-deleted (deletedAt). Phase 4+.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Identity
+// ───────────────────────────────────────────────────────────────────────
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum FormeJuridique {
+  SARL
+  SARL_AU
+  SA
+  SAS
+  SNC
+  SCS
+  SCA
+  EI
+  AUTO_ENTREPRENEUR
+  ASSOCIATION
+  COOPERATIVE
+  AUTRE
+}
+
+enum Role {
+  ADMIN
+  GESTIONNAIRE_PAIE
+  MANAGER
+  SALARIE
+  FIDUCIAIRE
+}
+
+model Tenant {
+  id             String         @id @default(cuid())
+  slug           String         @unique
+  name           String
+  status         TenantStatus   @default(ACTIVE)
+  raisonSociale  String
+  formeJuridique FormeJuridique
+  rc             String?
+  ice            String?
+  if             String?
+  patente        String?
+  cnss           String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  memberships Membership[]
+
+  @@index([status])
+  @@map("tenant")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  totpSecret    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships Membership[]
+
+  @@map("user")
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  tenantId  String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+  @@map("membership")
+}
+
+// Cardinal Rule R6 — append-only.
+// Do NOT add updatedAt. Do NOT add update/delete operations elsewhere.
+// A Postgres trigger (added in the migration) blocks UPDATE and DELETE.
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  tenantId    String
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  beforeJson  Json?
+  afterJson   Json?
+  ip          String?
+  ua          String?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_log")
+}

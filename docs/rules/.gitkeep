@@ -1,0 +1,7 @@
+# One markdown per regulatory rule (Phase 3+):
+#   ir.md, cnss.md, amo.md, allocations-familiales.md, tfp.md,
+#   frais-professionnels.md, charges-de-famille.md, smig.md, smag.md,
+#   licenciement.md, dommages-interets.md, regularisation-ir.md, ...
+#
+# Each document explains the regulatory basis (text of law / circulaire DGI / CNSS)
+# AND the implementation choice in @selyn/payroll-engine.

@@ -1,0 +1,3 @@
+# Phase 3: 50 golden test fixtures live here.
+# Each fixture = JSON with `input` and `expected` (CalculationInput → CalculationOutput).
+# Validated by the expert-comptable before going to production.

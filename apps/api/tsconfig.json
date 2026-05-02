@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./",
+    "paths": {
+      "@selyn/types": ["../../packages/types/src"],
+      "@selyn/types/*": ["../../packages/types/src/*"],
+      "@selyn/payroll-engine": ["../../packages/payroll-engine/src"],
+      "@selyn/payroll-engine/*": ["../../packages/payroll-engine/src/*"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
