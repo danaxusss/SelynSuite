@@ -16,6 +16,10 @@ export const VerifyCredentialsDto = z.object({
     .string()
     .regex(/^\d{6}$/)
     .optional(),
+  recoveryCode: z
+    .string()
+    .regex(/^[A-Z2-9-]{16,24}$/)
+    .optional(),
 });
 export type VerifyCredentialsDto = z.infer<typeof VerifyCredentialsDto>;
 

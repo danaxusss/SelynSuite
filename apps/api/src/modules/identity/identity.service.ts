@@ -14,6 +14,7 @@ import { AuditService } from '../shared/audit/audit.service';
 import { PasswordService } from './auth/password.service';
 import { TotpService } from './auth/totp.service';
 import { VerificationTokenService } from './auth/verification-token.service';
+import { TwoFactorService } from './two-factor.service';
 import type { SessionTokenPayload } from './auth/auth.types';
 
 export interface SignupInput {
@@ -34,13 +35,18 @@ export interface VerifyCredentialsInput {
   email: string;
   password: string;
   totpCode?: string | undefined;
+  /** A recovery code the user is presenting in lieu of a TOTP code. */
+  recoveryCode?: string | undefined;
   ip?: string | undefined;
   ua?: string | undefined;
 }
 
 export type VerifyCredentialsResult =
   | { ok: true; payload: Omit<SessionTokenPayload, 'iat' | 'exp'> }
-  | { ok: false; reason: 'INVALID_CREDENTIALS' | 'TOTP_REQUIRED' | 'TOTP_INVALID' };
+  | {
+      ok: false;
+      reason: 'INVALID_CREDENTIALS' | 'TOTP_REQUIRED' | 'TOTP_INVALID' | 'RECOVERY_INVALID';
+    };
 
 @Injectable()
 export class IdentityService {
@@ -52,6 +58,7 @@ export class IdentityService {
     private readonly audit: AuditService,
     private readonly passwords: PasswordService,
     private readonly totp: TotpService,
+    private readonly twoFactor: TwoFactorService,
     private readonly verificationTokens: VerificationTokenService,
   ) {}
 
@@ -151,11 +158,17 @@ export class IdentityService {
 
     let mfa = false;
     if (user.totpSecret) {
-      if (!input.totpCode) return { ok: false, reason: 'TOTP_REQUIRED' };
-      if (!this.totp.verify(user.totpSecret, input.totpCode)) {
-        return { ok: false, reason: 'TOTP_INVALID' };
+      if (input.recoveryCode) {
+        const ok = await this.twoFactor.consumeRecoveryCode(user.id, input.recoveryCode);
+        if (!ok) return { ok: false, reason: 'RECOVERY_INVALID' };
+        mfa = true;
+      } else {
+        if (!input.totpCode) return { ok: false, reason: 'TOTP_REQUIRED' };
+        if (!this.totp.verify(user.totpSecret, input.totpCode)) {
+          return { ok: false, reason: 'TOTP_INVALID' };
+        }
+        mfa = true;
       }
-      mfa = true;
     }
 
     // Pick the default tenant: lastTenantId if still a member, else the

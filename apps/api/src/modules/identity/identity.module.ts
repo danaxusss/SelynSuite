@@ -5,10 +5,12 @@ import { AuthGuard } from './auth/auth.guard';
 import { PasswordService } from './auth/password.service';
 import { SessionTokenService } from './auth/session-token.service';
 import { TotpService } from './auth/totp.service';
+import { TwoFactorController } from './auth/two-factor.controller';
 import { VerificationTokenService } from './auth/verification-token.service';
 import { RolesGuard } from './rbac/roles.guard';
 import { IdentityService } from './identity.service';
 import { MeController } from './me.controller';
+import { TwoFactorService } from './two-factor.service';
 
 /**
  * Identity bounded context: tenants, users, memberships, sessions, RBAC.
@@ -19,9 +21,10 @@ import { MeController } from './me.controller';
  */
 @Global()
 @Module({
-  controllers: [AuthController, MeController],
+  controllers: [AuthController, MeController, TwoFactorController],
   providers: [
     IdentityService,
+    TwoFactorService,
     SessionTokenService,
     PasswordService,
     TotpService,
@@ -31,6 +34,7 @@ import { MeController } from './me.controller';
   ],
   exports: [
     IdentityService,
+    TwoFactorService,
     SessionTokenService,
     PasswordService,
     TotpService,
