@@ -22,11 +22,15 @@ jobs:
 
     services:
       postgres:
+        # Cardinal Rule R1 — the app role must NOT be a superuser, otherwise
+        # Postgres bypasses RLS. POSTGRES_USER is the bootstrap superuser; the
+        # `selyn` non-superuser role is created by the "Bootstrap selyn role"
+        # step below before migrations run.
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: selyn
-          POSTGRES_PASSWORD: selyn_dev_password
-          POSTGRES_DB: selyn_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_dev_password
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         options: >-
@@ -48,6 +52,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://selyn:selyn_dev_password@localhost:5432/selyn_test?schema=public
       REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: ci-test-secret-ci-test-secret-ci-test-secret-1234
 
     steps:
       - name: Checkout
@@ -67,8 +72,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Bootstrap selyn role (non-superuser, owns selyn_test)
+        env:
+          PGPASSWORD: postgres_dev_password
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+            CREATE ROLE selyn WITH LOGIN PASSWORD 'selyn_dev_password' CREATEDB;
+            CREATE DATABASE selyn_test OWNER selyn;
+          SQL
+          PGPASSWORD=selyn_dev_password psql -h localhost -U selyn -d selyn_test -c "GRANT ALL ON SCHEMA public TO selyn;"
+
       - name: Generate Prisma client
         run: pnpm --filter @selyn/api exec prisma generate
+
+      - name: Apply migrations
+        run: pnpm --filter @selyn/api exec prisma migrate deploy
 
       - name: Format check
         run: pnpm format:check

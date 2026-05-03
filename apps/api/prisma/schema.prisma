@@ -1,12 +1,14 @@
 // Selyn Suite — Prisma schema
-// Phase 0: Identity bounded context only (Tenant, User, Membership, AuditLog).
-// Subsequent phases add Paie, RH, Compta, etc. — each in its own namespace
-// (model name prefix or schema map) per Cardinal Rule R5.
 //
 // Cardinal Rules enforced here:
-//   R1  every business table has tenantId + RLS policies (added in Phase 1).
-//   R6  AuditLog is append-only (no updatedAt, no @updatedAt).
-//   R7  legal-retention entities are soft-deleted (deletedAt). Phase 4+.
+//   R1  every business table has tenantId + RLS policies (see migration SQL).
+//   R6  audit_log is append-only — no updatedAt, no @updatedAt; UPDATE/DELETE
+//       blocked by trigger in the migration.
+//   R7  legal-retention entities will get deletedAt in Phase 4.
+//
+// Auth.js v5 model layout (User/Account/Session/VerificationToken) is
+// preserved so we can plug an OAuth provider later without a schema rewrite,
+// even though Phase 1 only uses the credentials provider with JWT sessions.
 
 generator client {
   provider = "prisma-client-js"
@@ -18,7 +20,7 @@ datasource db {
 }
 
 // ───────────────────────────────────────────────────────────────────────
-// Identity
+// Identity — tenants
 // ───────────────────────────────────────────────────────────────────────
 
 enum TenantStatus {
@@ -66,24 +68,99 @@ model Tenant {
   updatedAt      DateTime       @updatedAt
 
   memberships Membership[]
+  invitations Invitation[]
 
   @@index([status])
   @@map("tenant")
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// Identity — users (Auth.js compatible) + RBAC bridge
+// ───────────────────────────────────────────────────────────────────────
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
+  name          String?
+  image         String?
   emailVerified DateTime?
   passwordHash  String?
+  // Encrypted at rest with AUTH_SECRET-derived key. Only populated after enrollment.
   totpSecret    String?
+  // Tenant the user landed on at last login. Used to default the session's
+  // currentTenantId. Multi-tenant users can switch via the UI.
+  lastTenantId  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  memberships Membership[]
+  memberships    Membership[]
+  accounts       Account[]
+  sessions       Session[]
+  recoveryCodes  RecoveryCode[]
+  invitedByUsers Invitation[]   @relation("InvitedByUser")
 
   @@map("user")
 }
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_token")
+}
+
+// One-time recovery codes for 2FA. Stored as Argon2id hashes — never plaintext.
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("recovery_code")
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Identity — membership & invitations (tenant-scoped, RLS-protected)
+// ───────────────────────────────────────────────────────────────────────
 
 model Membership {
   id        String   @id @default(cuid())
@@ -101,9 +178,31 @@ model Membership {
   @@map("membership")
 }
 
-// Cardinal Rule R6 — append-only.
+model Invitation {
+  id              String    @id @default(cuid())
+  tenantId        String
+  email           String
+  role            Role
+  tokenHash       String    @unique
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  invitedByUserId String
+  createdAt       DateTime  @default(now())
+
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invitedByUser User   @relation("InvitedByUser", fields: [invitedByUserId], references: [id])
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("invitation")
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Audit log — Cardinal Rule R6 (append-only)
+// ───────────────────────────────────────────────────────────────────────
+
 // Do NOT add updatedAt. Do NOT add update/delete operations elsewhere.
-// A Postgres trigger (added in the migration) blocks UPDATE and DELETE.
+// A Postgres trigger (in the migration) blocks UPDATE and DELETE.
 model AuditLog {
   id          BigInt   @id @default(autoincrement())
   tenantId    String

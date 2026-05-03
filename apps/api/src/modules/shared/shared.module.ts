@@ -1,11 +1,14 @@
 import { Global, Module } from '@nestjs/common';
+import { AuditModule } from './audit/audit.module';
 
-// Cross-cutting concerns shared by every bounded context:
-// audit log writer, in-process event bus, Money helpers, date utilities.
-// Marked @Global so consumers don't need to re-import.
+/**
+ * Cross-cutting concerns shared by every bounded context:
+ * audit log, in-process event bus (later), Money helpers (Phase 3),
+ * date utilities. Marked @Global so consumers don't need to re-import.
+ */
 @Global()
 @Module({
-  providers: [],
-  exports: [],
+  imports: [AuditModule],
+  exports: [AuditModule],
 })
 export class SharedModule {}

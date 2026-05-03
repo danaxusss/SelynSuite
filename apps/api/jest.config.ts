@@ -4,7 +4,7 @@ const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   rootDir: './',
-  roots: ['<rootDir>/src'],
+  roots: ['<rootDir>/src', '<rootDir>/test'],
   testRegex: '.*\\.spec\\.ts$',
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }],

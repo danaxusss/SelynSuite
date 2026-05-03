@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
@@ -10,6 +11,7 @@ async function bootstrap(): Promise<void> {
 
   app.useLogger(app.get(Logger));
   app.use(helmet());
+  app.use(cookieParser());
   app.enableCors({
     origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
     credentials: true,
