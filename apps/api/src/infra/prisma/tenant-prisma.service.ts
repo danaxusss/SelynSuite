@@ -40,11 +40,44 @@ export class TenantPrismaService {
       options.isolationLevel ? { isolationLevel: options.isolationLevel } : {},
     );
   }
+
+  /**
+   * Auth-boundary helper. Runs `work` inside a transaction with `app.user_id`
+   * set, so the user-scoped RLS policies on `membership` and `tenant` apply
+   * (see migration `20260503142650_auth_user_scoped_policies`). Used for
+   * lookups like /me and switch-tenant where no tenant context exists yet.
+   *
+   * Pass a tenantId to also set `app.tenant_id` (covers the case where the
+   * caller already knows which tenant the user is operating in).
+   */
+  async runForUser<T>(
+    userId: string,
+    work: (tx: Prisma.TransactionClient) => Promise<T>,
+    options: { tenantId?: string; isolationLevel?: Prisma.TransactionIsolationLevel } = {},
+  ): Promise<T> {
+    if (!isValidId(userId)) throw new Error('Invalid userId');
+    if (options.tenantId !== undefined && !isValidTenantId(options.tenantId)) {
+      throw new Error('Invalid tenantId');
+    }
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL app.user_id = '${userId}'`);
+        if (options.tenantId) {
+          await tx.$executeRawUnsafe(`SET LOCAL app.tenant_id = '${options.tenantId}'`);
+        }
+        return work(tx);
+      },
+      options.isolationLevel ? { isolationLevel: options.isolationLevel } : {},
+    );
+  }
 }
 
-// Allowlist for tenantId: cuid (default) is [a-z0-9], invitation accept paths
-// also use cuid, but we accept any safe identifier characters.
-const TENANT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+// Allowlist for tenantId / userId — both are CUIDs or random base64url
+// strings ([A-Za-z0-9_-]). Length capped to keep SET LOCAL safe.
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 function isValidTenantId(id: string): boolean {
-  return TENANT_ID_RE.test(id);
+  return ID_RE.test(id);
+}
+function isValidId(id: string): boolean {
+  return ID_RE.test(id);
 }

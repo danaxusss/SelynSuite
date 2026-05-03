@@ -49,5 +49,19 @@ export default tseslint.config(
       // Phase 3 alongside the Money value object (packages/payroll-engine).
     },
   },
+  {
+    // Test files: HTTP/JSON helpers (supertest response.body, etc.) routinely
+    // return `any`. Relaxing the typed-data rules avoids hundreds of false
+    // positives while keeping the behaviour assertions strict.
+    files: ['**/*.spec.ts', '**/*.test.ts', 'apps/api/test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+    },
+  },
   prettier,
 );

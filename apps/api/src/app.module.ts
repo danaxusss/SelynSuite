@@ -6,6 +6,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { PaieModule } from './modules/paie/paie.module';
 import { SharedModule } from './modules/shared/shared.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
+import { EmailModule } from './infra/email/email.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { PrismaModule } from './infra/prisma/prisma.module';
       },
     }),
     PrismaModule,
+    EmailModule,
     SharedModule,
     HealthModule,
     IdentityModule,
