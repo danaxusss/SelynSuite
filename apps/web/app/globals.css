@@ -38,5 +38,27 @@
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@layer utilities {
+  .selyn-scrollbar {
+    scrollbar-color: rgb(203 213 225) transparent;
+    scrollbar-width: thin;
+  }
+
+  .selyn-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .selyn-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .selyn-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgb(203 213 225);
   }
 }

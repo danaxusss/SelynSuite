@@ -34,16 +34,21 @@ export default async function AccountPage() {
     <main className="mx-auto max-w-3xl space-y-6 px-6 py-12">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Mon compte</h1>
-        <form
-          action={async () => {
-            'use server';
-            await signOut({ redirectTo: '/login' });
-          }}
-        >
-          <Button type="submit" variant="outline" size="sm">
-            Se déconnecter
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm">
+            <Link href="/suite/manager">Ouvrir Selyn Suite</Link>
           </Button>
-        </form>
+          <form
+            action={async () => {
+              'use server';
+              await signOut({ redirectTo: '/login' });
+            }}
+          >
+            <Button type="submit" variant="outline" size="sm">
+              Se déconnecter
+            </Button>
+          </form>
+        </div>
       </header>
 
       <Card>
